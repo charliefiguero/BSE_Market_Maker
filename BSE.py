@@ -431,6 +431,20 @@ class Trader:
     def mutate(self, time, lob, trade, verbose):
         return None
 
+class Trader_DIMM01(Trader):
+    # the following is just a copy of GVWY's getorder method
+    def getorder(self, time, countdown, lob):
+        if len(self.orders) < 1:
+            order = None
+        else:
+            quoteprice = self.orders[0].price
+            self.lastquote = quoteprice
+            order=Order(self.tid,
+                        self.orders[0].otype,
+                        quoteprice,
+                        self.orders[0].qty,
+                        time,lob['QID'])
+    return order
 
 # Trader subclass Giveaway
 # even dumber than a ZI-U: just give the deal away
@@ -1226,7 +1240,7 @@ if __name__ == "__main__":
 
     buyers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
     sellers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
-
+    mktmakers_spec = [('DIMM01',1)]
     traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
 
     # run a sequence of trials, one session per trial
