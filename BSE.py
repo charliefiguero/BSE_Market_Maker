@@ -444,7 +444,7 @@ class Trader_DIMM01(Trader):
                         quoteprice,
                         self.orders[0].qty,
                         time,lob['QID'])
-    return order
+        return order
 
 # Trader subclass Giveaway
 # even dumber than a ZI-U: just give the deal away
@@ -833,6 +833,8 @@ def populate_market(traders_spec, traders, shuffle, verbose):
             return Trader_Sniper('SNPR', name, 0.00, 0)
         elif robottype == 'ZIP':
             return Trader_ZIP('ZIP', name, 0.00, 0)
+        elif robottype == 'DIMM01':
+            return Trader_DIMM01('DIMM01', name, 500.00, 0)
         else:
             sys.exit('FATAL: don\'t know robot type %s\n' % robottype)
 
@@ -876,6 +878,20 @@ def populate_market(traders_spec, traders, shuffle, verbose):
     if shuffle:
         shuffle_traders('S', n_sellers, traders)
 
+    n_mktmakers = 0
+    for ms in traders_spec['mktmakers']:
+        ttype = ms[0]
+        for m in range(ms[1]):
+            tname = 'M%02d' % n_mktmakers  # buyer i.d. string
+            traders[tname] = trader_type(ttype, tname)
+            n_mktmakers = n_mktmakers + 1
+
+    if n_mktmakers < 1:
+        sys.exit('FATAL: no mktmakers specified\n')
+
+    if shuffle:
+        shuffle_traders('M', n_mktmakers, traders)
+
     if verbose:
         for t in range(n_buyers):
             bname = 'B%02d' % t
@@ -883,8 +899,11 @@ def populate_market(traders_spec, traders, shuffle, verbose):
         for t in range(n_sellers):
             bname = 'S%02d' % t
             print(traders[bname])
+        for t in range(n_mktmakers):
+            bname = 'M%02d' % t
+            print(traders[bname])
 
-    return {'n_buyers': n_buyers, 'n_sellers': n_sellers}
+    return {'n_buyers': n_buyers, 'n_sellers': n_sellers, 'n_mktmakers': n_mktmakers}
 
 
 # customer_orders(): allocate orders to traders
@@ -1097,7 +1116,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
     # timestep set so that can process all traders in one second
     # NB minimum interarrival time of customer orders may be much less than this!!
-    timestep = 1.0 / float(trader_stats['n_buyers'] + trader_stats['n_sellers'])
+    timestep = 1.0 / float(trader_stats['n_buyers'] + trader_stats['n_sellers'] + trader_stats['n_mktmakers'])
 
     duration = float(endtime - starttime)
 
@@ -1241,7 +1260,7 @@ if __name__ == "__main__":
     buyers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
     sellers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
     mktmakers_spec = [('DIMM01',1)]
-    traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec}
+    traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec, 'mktmakers':mktmakers_spec}
 
     # run a sequence of trials, one session per trial
 
