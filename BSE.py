@@ -49,6 +49,9 @@
 import sys
 import math
 import random
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
 
 import MM
 
@@ -423,14 +426,14 @@ class Trader:
         if verbose: print('%s profit=%d balance=%d profit/time=%d' % (outstr, profit, self.balance, self.profitpertime))
         self.del_order(order)  # delete the order
 
-    # specify how trader responds to events in the market
-    # this is a null action, expect it to be overloaded by specific algos
     def respond(self, time, lob, trade, verbose):
+        # specify how trader responds to events in the market
+        # this is a null action, expect it to be overloaded by specific algos
         return None
 
-    # specify how trader mutates its parameter values
-    # this is a null action, expect it to be overloaded by specific algos
     def mutate(self, time, lob, trade, verbose):
+        # specify how trader mutates its parameter values
+        # this is a null action, expect it to be overloaded by specific algos
         return None
 
 # Trader subclass Giveaway
@@ -1089,7 +1092,7 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
 # one session in the market
 def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdump, dump_all, verbose):
 
-    orders_verbose = False
+    orders_verbose = True
     lob_verbose = False
     process_verbose = False
     respond_verbose = False
@@ -1176,7 +1179,10 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
     if dump_all:
 
         # dump the tape (transactions only -- not dumping cancellations)
-        exchange.tape_dump(sess_id+'_transactions.csv', 'w', 'keep')
+        file_out_name = sess_id+'_transactions'
+        exchange.tape_dump(file_out_name+'.csv', 'w', 'keep')
+
+        save_transactions_plot(file_out_name+'.csv', "t_plots/"+file_out_name)
 
         # record the blotter for each trader
         bdump = open(sess_id+'_blotters.csv', 'w')
@@ -1190,7 +1196,39 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
     # write trade_stats for this session (NB end-of-session summary only)
     trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
+#############################
 
+# Plotting Functions
+
+#############################
+
+# converts transactions -> (times, prices) :: ([float], [float])
+def read_transactions(file_name):
+    with open(file_name, 'r') as f:
+        data = csv.reader(f)
+        l = np.array([ x for x in data ])
+        f = np.vectorize(np.float)
+
+        times  = f(l[:,1])
+        prices = f(l[:,2])
+
+        return times, prices
+
+# plots price against time
+def plot_transactions(times, prices, title=None):
+    _, ax = plt.subplots()
+    ax.plot(times, prices)
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Price (£)')
+    ax.set_ylim(ymin=0)
+    if title != None:
+        ax.set_title(title)
+    # plt.show()
+
+def save_transactions_plot(file_name, save_to):
+    times, prices = read_transactions(file_name)
+    plot_transactions(times, prices, title=file_name)
+    plt.savefig(save_to)
 
 #############################
 
@@ -1203,7 +1241,6 @@ if __name__ == "__main__":
     start_time = 0.0
     end_time = 600.0
     duration = end_time - start_time
-
 
     # schedule_offsetfn returns time-dependent offset, to be added to schedule prices
     def schedule_offsetfn(t):
@@ -1233,11 +1270,13 @@ if __name__ == "__main__":
 
     # The code below sets up symmetric supply and demand curves at prices from 50 to 150, P0=100
 
-    range1 = (50, 150, schedule_offsetfn)
+    range1 = (50, 150)
+    # range1 = (50, 150, schedule_offsetfn)
     supply_schedule = [{'from': start_time, 'to': end_time, 'ranges': [range1], 'stepmode': 'fixed'}
                        ]
 
-    range2 = (50, 150, schedule_offsetfn)
+    range2 = (50, 150)
+    # range2 = (50, 150, schedule_offsetfn)
     demand_schedule = [{'from': start_time, 'to': end_time, 'ranges': [range2], 'stepmode': 'fixed'}
                        ]
 
@@ -1324,6 +1363,9 @@ if __name__ == "__main__":
     # print(trialnumber)
 
 if __name__ == "__test__":
-    charlie = MM.Customer()
-    trader = MM.Trader_ZIPMM('ZIPMM', "699999", 690, 0)
-
+    charlie = MM.LR_LTT()
+    charlie.append_data(2.0000000000000013,77)
+    charlie.append_data(14.0000000110000013,100)
+    charlie.fit_regression()
+    charlie.predict_price(20.0)
+    

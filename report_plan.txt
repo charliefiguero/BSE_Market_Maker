@@ -55,4 +55,14 @@ Analysis of new MM:
 
 Improvements:
 
-1. add spread to long term trend
+1. add spread to long term trend (dual linear regression)
+2. restrict regression to recent transactions
+3. refuse orders that happen before building up a history / give very favourable intial orders
+4. crossover
+
+---------------------------------------------------------------------
+
+TODO:
+
+1. rewrite Adam's plotting functions
+

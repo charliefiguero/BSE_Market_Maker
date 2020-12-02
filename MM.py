@@ -19,16 +19,45 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
 
     def __init__(self, ttype, tid, balance, time):
         super().__init__(ttype, tid, balance, time)
-        self.eqlbm = None
-        self.ltt = LTT()
-    
-    def generate_order(self):
-        new_order = BSE.Order(self.tid, "Buy", 100, 1, self.birthtime, 69696969)
-        print()
-        print("Generated order: %s" %new_order)
 
+        # Exponential Moving Average
+        self.eqlbm = None
+        self.nLastTrades = 5
+        self.ema_param = 2 / float(self.nLastTrades + 1)
+
+        # Linear Regression Long Term Trend
+        self.ltt = LR_LTT()
+    
+    def generate_order(self, time, countdown, lob):
+        # choose order type based on LTT
+        quoteprice = self.get_quoteprice(lob, self.ttype)
+        if (quoteprice == None): return
+        quantity = 1 # hard coded as this version of BSE does not support order quantites
+        new_order = BSE.Order(self.tid, self.ttype, quoteprice, quantity, time, lob['QID'])
+        # print(self.ttype+self.tid + " generated order: %s" %new_order)
+        self.orders = [new_order]
+
+    def get_quoteprice(self, lob, otype):
+        if (self.ltt.history_length < self.nLastTrades): # check if ema has built up enough history
+            if (otype == 'Bid'): 
+                quoteprice = 69
+            else: # otype == 'Ask'
+                quoteprice = 69
+        else:
+            quoteprice = self.eqlbm
+        return quoteprice
+
+    # called by the market session
     def getorder(self, time, countdown, lob):
-        # generate_order()
+        self.job = self.ltt.decide_job(time, self.eqlbm)
+        self.generate_order(time, countdown, lob)
+        if (len(self.orders) == 0):
+            self.job = None
+
+        # check inventory somewhere
+        if (len(self.orders) < 1):
+            print("no orders")
+        else: print(self.orders[0])
         super().getorder(time, countdown, lob)
 
     def update_eq(self, price):
@@ -37,12 +66,11 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         else: self.eqlbm = self.ema_param * price + (1 - self.ema_param) * self.eqlbm
 
     def respond(self, time, lob, trade, verbose):
+        if (trade != None):
+            self.update_eq(trade["price"]) # update EMA
+            self.ltt.append_data(time, trade["price"])# update LTT
         super().respond(time, lob, trade, verbose)
-        
-        # if transaction:
-            # # update LTT
-            # update_eq(trade.price) # update EMA
-            
+
 
 class Trader_DIMM01(BSE.Trader):
 
@@ -145,22 +173,37 @@ class Trader_DIMM01(BSE.Trader):
         
         self.del_order(order) # delete the order
 
-class LTT():
-    """ Analyses the market to send out buy or sell orders. """
+class LR_LTT(): # Linear Regression - Long Term Trend
+    """ Analyses the market to choose trader job. """
     
     def __init__(self):
-        transaction_times = np.reshape(np.arange(5), (-1,1))
-        transaction_prices = np.arange(5) * 2
-        regression = linear_model.LinearRegression()
-        regression.fit(transaction_times, transaction_prices)
-    
-    def fit_regression(self):
-        regression.fit(transaction_times, transaction_prices)
-        print("Coefficients: %.1f" % regression.coef_)
-        print("Intercept: %.1f" % regression.intercept_)
+        self.transaction_times = []
+        self.transaction_prices = []
+        self.history_length = 0
+        self.regression = linear_model.LinearRegression()
+        self.r_fitted = False
+        self.needs_update = False
 
-    def decide_order_type(self, time, market_price_equilibrium):
-        if (market_price_equilibrium > regression.predict[[time]]):
-            return "Sell"
-        else: return "Buy"
+    def fit_regression(self):
+        if (self.transaction_prices == [] or self.transaction_times == []):
+            return
+        self.regression.fit(self.transaction_times, self.transaction_prices)
+        self.r_fitted = True
+        self.needs_update = False
+        # print("New coefficient: %.1f" % self.regression.coef_)
+        # print("New intercept: %.1f" % self.regression.intercept_)
+
+    def append_data(self, time, price):
+        self.transaction_times.append([time])
+        self.transaction_prices.append(price)
+        self.needs_update = True
+        self.history_length += 1
+
+    def predict_price(self, time):
+        return self.regression.predict([[time]])
+
+    def decide_job(self, time, market_price_equilibrium):
+        self.fit_regression()
+        if (self.r_fitted == False or market_price_equilibrium > self.predict_price(time)): return "Ask"
+        else: return "Sell"
         
