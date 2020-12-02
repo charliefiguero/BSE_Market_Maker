@@ -50,7 +50,7 @@ import sys
 import math
 import random
 
-import DIMM01
+import MM
 
 bse_sys_minprice = 1  # minimum price in the system, in cents/pennies
 bse_sys_maxprice = 1000  # maximum price in the system, in cents/pennies
@@ -642,7 +642,7 @@ class Trader_ZIP(Trader):
             # set the price from limit and profit-margin
             self.price = int(round(self.limit * (1.0 + self.margin), 0))
 
-        # #                        print('old=%d diff=%d change=%d price = %d\n' % (oldprice, diff, change, self.price))
+        # # print('old=%d diff=%d change=%d price = %d\n' % (oldprice, diff, change, self.price))
 
         # what, if anything, has happened on the bid LOB?
         bid_improved = False
@@ -821,7 +821,9 @@ def populate_market(traders_spec, traders, shuffle, verbose):
         elif robottype == 'ZIP':
             return Trader_ZIP('ZIP', name, 0.00, 0)
         elif robottype == 'DIMM01':
-            return DIMM01.Trader_DIMM01('DIMM01', name, 500.00, 0)
+            return MM.Trader_DIMM01('DIMM01', name, 500.00, 0)
+        elif robottype == 'ZIPMM':
+            return MM.Trader_ZIPMM('ZIPMM', name, 500.00, 0)
         else:
             sys.exit('FATAL: don\'t know robot type %s\n' % robottype)
 
@@ -1246,7 +1248,7 @@ if __name__ == "__main__":
 
     buyers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
     sellers_spec = [('GVWY',10),('SHVR',10),('ZIC',10),('ZIP',10)]
-    mktmakers_spec = [('DIMM01',1)]
+    mktmakers_spec = [('DIMM01',1), ('ZIPMM',1)]
     traders_spec = {'sellers':sellers_spec, 'buyers':buyers_spec, 'mktmakers':mktmakers_spec}
 
     # run a sequence of trials, one session per trial
@@ -1320,4 +1322,8 @@ if __name__ == "__main__":
     # tdump.close()
     #
     # print(trialnumber)
+
+if __name__ == "__test__":
+    charlie = MM.Customer()
+    trader = MM.Trader_ZIPMM('ZIPMM', "699999", 690, 0)
 

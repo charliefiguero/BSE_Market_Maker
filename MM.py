@@ -1,4 +1,48 @@
+import numpy as np
+from sklearn import linear_model
+from sklearn.metrics import mean_squared_error, r2_score
+
 import BSE
+
+# self.ttype = ttype  # what type / strategy this trader is
+# self.tid = tid  # trader unique ID code
+# self.balance = balance  # money in the bank
+# self.blotter = []  # record of trades executed
+# self.orders = []  # customer orders currently being worked (fixed at 1)
+# self.n_quotes = 0  # number of quotes live on LOB
+# self.birthtime = time  # used when calculating age of a trader/strategy
+# self.profitpertime = 0  # profit per unit time
+# self.n_trades = 0  # how many trades has this trader done?
+# self.lastquote = None  # record of what its last quote was
+
+class Trader_ZIPMM(BSE.Trader_ZIP):
+
+    def __init__(self, ttype, tid, balance, time):
+        super().__init__(ttype, tid, balance, time)
+        self.eqlbm = None
+        self.ltt = LTT()
+    
+    def generate_order(self):
+        new_order = BSE.Order(self.tid, "Buy", 100, 1, self.birthtime, 69696969)
+        print()
+        print("Generated order: %s" %new_order)
+
+    def getorder(self, time, countdown, lob):
+        # generate_order()
+        super().getorder(time, countdown, lob)
+
+    def update_eq(self, price):
+        # Updates the equilibrium price estimate using EMA
+        if self.eqlbm == None: self.eqlbm = price
+        else: self.eqlbm = self.ema_param * price + (1 - self.ema_param) * self.eqlbm
+
+    def respond(self, time, lob, trade, verbose):
+        super().respond(time, lob, trade, verbose)
+        
+        # if transaction:
+            # # update LTT
+            # update_eq(trade.price) # update EMA
+            
 
 class Trader_DIMM01(BSE.Trader):
 
@@ -100,3 +144,23 @@ class Trader_DIMM01(BSE.Trader):
                 (outstr, outcome, transactionprice, owned, self.balance, net_worth)) 
         
         self.del_order(order) # delete the order
+
+class LTT():
+    """ Analyses the market to send out buy or sell orders. """
+    
+    def __init__(self):
+        transaction_times = np.reshape(np.arange(5), (-1,1))
+        transaction_prices = np.arange(5) * 2
+        regression = linear_model.LinearRegression()
+        regression.fit(transaction_times, transaction_prices)
+    
+    def fit_regression(self):
+        regression.fit(transaction_times, transaction_prices)
+        print("Coefficients: %.1f" % regression.coef_)
+        print("Intercept: %.1f" % regression.intercept_)
+
+    def decide_order_type(self, time, market_price_equilibrium):
+        if (market_price_equilibrium > regression.predict[[time]]):
+            return "Sell"
+        else: return "Buy"
+        

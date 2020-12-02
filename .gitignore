@@ -2,3 +2,4 @@ sess*
 .vscode
 avg_balance.csv
 __pycache__
+test.py

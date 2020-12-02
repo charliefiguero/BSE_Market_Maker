@@ -1,0 +1,58 @@
+Introduction 
+    State why the problem you address is important 
+    State what is lacking in the current knowledge 
+    State the objectives of your study or the research question 
+Methods 
+    Describe the context and setting of the study 
+    Specify the study design 
+    Describe the ‘population’ (patients, doctors, hospitals, etc.) 
+    Describe the sampling strategy 
+    Describe the intervention (if applicable) 
+    Identify the main study variables 
+    Describe data collection instruments and procedures 
+    Outline analysis methods 
+Results 
+    Report on data collection and recruitment (response rates, etc.) 
+    Describe participants (demographic, clinical condition, etc.) 
+    Present key findings with respect to the central research question 
+    Present secondary findings (secondary outcomes, subgroup analyses, etc.) 
+Discussion 
+    State the main findings of the study 
+    Discuss the main results with reference to previous research 
+    Discuss policy and practice implications of the results 
+    Analyse the strengths and limitations of the study 
+    Offer perspectives for future work 
+
+---------------------------------------------------------------------
+
+long term trend (LTT) - linear regression
+
+Change to dual linear regression?
+
+current equilibrium
+    if above LTT sell order
+    if below LTT buy order
+
+1. linear regression to change trader type to buy or sell
+
+2. estimated mean average to find limit order price
+
+3. ZIP fulfil LO
+
+---------------------------------------------------------------------
+
+Introduction to Zip
+Analysis of effectiveness of Zip as a market maker
+Planned improvements based on analysis
+
+Analysis of new MM:
+    Homogeneous market
+    Heterogeous market
+    Speed of convergence on price equilibrium
+    Changes to market condition
+
+---------------------------------------------------------------------
+
+Improvements:
+
+1. add spread to long term trend
