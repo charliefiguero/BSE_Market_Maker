@@ -20,6 +20,8 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
     def __init__(self, ttype, tid, balance, time):
         super().__init__(ttype, tid, balance, time)
 
+        self.job = 'Bid'
+
         # trader inventory
         self.inventory = 0
         self.MIN_INVENTORY = 0
@@ -27,16 +29,21 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
 
         # Exponential Moving Average
         self.eqlbm = None
-        self.nLastTrades = 5
+        self.nLastTrades = 30
         self.ema_param = 2 / float(self.nLastTrades + 1)
 
         # Linear Regression Long Term Trend
         self.ltt = LR_LTT()
     
     def generate_order(self, time, countdown, lob):
-        # choose order type based on LTT
+        # choose quoteprice based on LTT
         quoteprice = self.get_quoteprice(time, lob, self.job)
         if (quoteprice == None): return
+
+        # balance check
+        if self.job == 'Bid':
+            if self.balance < quoteprice:
+                quoteprice = self.balance
 
         quoteprice = int(round(quoteprice))
         quantity = 1 # hard coded as this version of BSE does not support order quantites
@@ -44,39 +51,30 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         
         return new_order
 
-    def get_quoteprice(self, time, lob, otype):
+    def get_quoteprice(self, time, lob, otype): # none
         if (self.ltt.history_length < self.nLastTrades): # check if ema has built up enough history
-            print("funky price sent")
-            if (otype == 'Bid'): # CHANGE to best possible price
-                quoteprice = 69
-            elif (otype == 'Ask'):
-                quoteprice = 69
-            else: 
-                print("wrong otype:", otype)
-                exit(1)
-
+            return None
         else:
-            # returns None if regression is not fitted
-            quoteprice = float(self.ltt.predict_price(time))
+            # predict price returns None if regression is not fitted
+            # quoteprice = float(self.ltt.predict_price(time))
+            quoteprice = float(self.eqlbm)
         return quoteprice
 
     # called by the market session
     def getorder(self, time, countdown, lob):
 
-        # decide the job type for the order and update regression
-        self.job = self.ltt.decide_job(time, self.eqlbm)
-
         # check there is sufficient inventory
         if (self.job == 'Ask'):
             if (self.inventory <= self.MIN_INVENTORY):
-                self.job = None
                 # print("insufficent inventory")
                 return None
         elif (self.job == 'Bid'):
             if (self.inventory > self.MAX_INVENTORY):
-                self.job = None
-                print("inventory capped")
-                return None  
+                # print("inventory capped")
+                return None
+        else:
+            print("debug: no job")
+            return None
 
         # print("ZIPMM about to generate order")
         customer_order = self.generate_order(time, countdown, lob) # generate an order using ltt as a limit price
@@ -84,10 +82,11 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
             return None
         # add to orders
         self.orders = [customer_order]
-        # print("customer order:", self.orders[0])
+        print("eqlbn:", self.eqlbm)
+        print("customer order:", self.orders[0])
 
         lob_order = super().getorder(time, countdown, lob) # refine the order with ZIP (makes more passive?)
-        # print("lob order:", lob_order)
+        print("lob order:", lob_order)
         return lob_order
 
     def update_eq(self, price):
@@ -100,8 +99,12 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
             self.update_eq(trade["price"]) # update EMA
             self.ltt.append_data(time, trade["price"])# update LTT
 
-        # ZIP black box         
-        super().respond(time, lob, trade, verbose)
+        # ZIP black box.
+        if (self.price != None):
+            super().respond(time, lob, trade, verbose)
+
+    def calculate_net_worth(self):
+        return self.balance + (self.inventory * self.eqlbm)
 
     def bookkeep(self, trade, order, verbose, time):
 
@@ -135,6 +138,7 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
 
         self.n_trades += 1
 
+
         verbose = True # We will log to output
 
         if verbose: # The following is for logging output to terminal 
@@ -144,11 +148,14 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
                 outcome = "Sold"
                 
             net_worth = self.balance + self.last_purchase_price 
-            print('Type=%s; %s, %s=%d; Qty=%d; Balance=%d, NetWorth=%d' %
-                (self.ttype, outstr, outcome, transactionprice, 1, self.balance, net_worth)) 
+            print('Type=%s; Order=%s; %s=%d; Inventory=%d; Balance=%d, NetWorth=%d' %
+                (self.ttype, outstr, outcome, transactionprice, self.inventory, self.balance, self.calculate_net_worth())) 
         
         self.del_order(order) # delete the order
 
+        # Decides job of next order. Must be done here because of structure of BSE
+        self.job = self.ltt.decide_job(time, self.eqlbm)
+        print("job:", self.job)
 
 class Trader_DIMM01(BSE.Trader):
 

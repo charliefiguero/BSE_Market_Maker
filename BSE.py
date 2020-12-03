@@ -1298,10 +1298,10 @@ if __name__ == "__main__":
     verbose = True
 
     # n_trials is how many trials (i.e. market sessions) to run in total
-    n_trials = 1
+    n_trials = 3
 
     # n_recorded is how many trials (i.e. market sessions) to write full data-files for
-    n_trials_recorded = 1
+    n_trials_recorded = 3
 
     tdump=open('avg_balance.csv','w')
 
