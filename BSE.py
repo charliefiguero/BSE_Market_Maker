@@ -1092,12 +1092,12 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
 # one session in the market
 def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdump, dump_all, verbose):
 
-    orders_verbose = True
+    orders_verbose = False
     lob_verbose = False
     process_verbose = False
     respond_verbose = False
     bookkeep_verbose = False
-    populate_verbose = False
+    populate_verbose = True
 
     # initialise the exchange
     exchange = Exchange()
@@ -1150,6 +1150,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
         if order is not None:
             if order.otype == 'Ask' and order.price < traders[tid].orders[0].price:
+                print("debug")
+                print(order.price)
+                print(traders[tid].orders[0].price)
                 sys.exit('Bad ask')
             if order.otype == 'Bid' and order.price > traders[tid].orders[0].price:
                 sys.exit('Bad bid')
@@ -1295,10 +1298,10 @@ if __name__ == "__main__":
     verbose = True
 
     # n_trials is how many trials (i.e. market sessions) to run in total
-    n_trials = 6
+    n_trials = 1
 
     # n_recorded is how many trials (i.e. market sessions) to write full data-files for
-    n_trials_recorded = 3
+    n_trials_recorded = 1
 
     tdump=open('avg_balance.csv','w')
 

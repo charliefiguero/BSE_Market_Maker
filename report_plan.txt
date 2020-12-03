@@ -59,6 +59,8 @@ Improvements:
 2. restrict regression to recent transactions
 3. refuse orders that happen before building up a history / give very favourable intial orders
 4. crossover
+5. predict price use future time
+6. delete orders on a basis of if a new order is better rather than staleness
 
 ---------------------------------------------------------------------
 
