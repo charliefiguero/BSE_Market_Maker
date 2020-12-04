@@ -655,6 +655,10 @@ class Trader_ZIP(Trader):
         if lob_best_bid_p is not None:
             # non-empty bid LOB
             lob_best_bid_q = lob['bids']['lob'][-1][1]
+            print("prev_best_bid_p:", self.prev_best_bid_p)
+            print(lob)
+            print("prev_best_bid_q:", self.prev_best_bid_q)
+            print("lob_best_bid_q:", lob_best_bid_q)
             if (self.prev_best_bid_p is not None) and (self.prev_best_bid_p < lob_best_bid_p):
                 # best bid has improved
                 # NB doesn't check if the improvement was by self
@@ -665,11 +669,14 @@ class Trader_ZIP(Trader):
                 bid_hit = True
         elif self.prev_best_bid_p is not None:
             # the bid LOB has been emptied: was it cancelled or hit?
+            print("hit or canceled")
             last_tape_item = lob['tape'][-1]
             if last_tape_item['type'] == 'Cancel':
                 bid_hit = False
             else:
                 bid_hit = True
+        else:
+            print("debug check")
 
         # what, if anything, has happened on the ask LOB?
         ask_improved = False
@@ -1088,7 +1095,6 @@ def customer_orders(time, last_update, traders, trader_stats, os, pending, verbo
                 new_pending.append(order)
     return [new_pending, cancellations]
 
-
 # one session in the market
 def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdump, dump_all, verbose):
 
@@ -1120,6 +1126,9 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
     if verbose:
         print('\n%s;  ' % sess_id)
+
+    times = []
+    networth = []
 
     while time < endtime:
 
@@ -1178,6 +1187,25 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
         time = time + timestep
 
     # session has ended
+
+    # plot networth - needs refactoring
+
+    # bdump = open(sess_id+'_networth.csv', 'w')
+    # for t in traders:
+    #     if traders[t].ttype == 'ZIPMM':
+    #         for i in range(len(traders[t].times)):
+    #             bdump.write('%s, %f, %f\n' % 
+    #                 (traders[t].tid, traders[t].times[i], traders[t].networth[i]))
+
+    #         _, ax = plt.subplots()
+    #         ax.plot(traders[t].times, traders[t].networth)
+    #         ax.set_xlabel('Time (s)')
+    #         ax.set_ylabel('Networth (£)')
+    #         ax.set_ylim(ymin=0)
+    #         plt.show()
+
+    # bdump.close()
+
 
     if dump_all:
 
@@ -1298,10 +1326,10 @@ if __name__ == "__main__":
     verbose = True
 
     # n_trials is how many trials (i.e. market sessions) to run in total
-    n_trials = 3
+    n_trials = 6
 
     # n_recorded is how many trials (i.e. market sessions) to write full data-files for
-    n_trials_recorded = 3
+    n_trials_recorded = 0
 
     tdump=open('avg_balance.csv','w')
 

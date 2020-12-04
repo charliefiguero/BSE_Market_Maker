@@ -68,3 +68,24 @@ TODO:
 
 1. rewrite Adam's plotting functions
 
+---------------------------------------------------------------------
+
+Introduction:
+
+1. thinking behind the algorithm
+2. difference between mm and sales traders
+3. buckle in buckeroo
+
+ANALYSIS:
+
+1. why the algi works
+    a. linear regression for long term 
+2. why it doesnt work so well
+3. effects of differnt market conditions
+4. effects of differrent starting price 
+5. effects of different trader distributions
+
+Improvements:
+                \
+1. O8=> ~~~  >^-8{(|\) : )\ 
+                /
