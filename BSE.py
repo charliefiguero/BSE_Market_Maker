@@ -1179,28 +1179,39 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
     # session has ended
 
-    # logging
+    #############################################
+
+    # WRITE MARKET SESSION DATA TO CSV
+
+    #############################################
+
     if dump_all:
 
-        # plot networth - needs refactoring
+        # NETWORTH
         bdump = open('networths_csv/'+sess_id+'_networth.csv', 'w')
+
         for t in traders:
             if traders[t].ttype == 'ZIPMM':
+                # write header file
+                bdump.write('%s, %s, %s\n' % ('TID', 'Time', 'Networth'))
+
                 for i in range(len(traders[t].times)):
                     bdump.write('%s, %f, %f\n' % 
                         (traders[t].tid, traders[t].times[i], traders[t].networth[i]))
-                # plot networth
-                save_networth_plot('networths_csv/'+sess_id+'_networth.csv',
-                                   'n_plots/'+sess_id+'_networth')
+
+                # save_networth_plot('networths_csv/'+sess_id+'_networth.csv',
+                #                    'n_plots/'+sess_id+'_networth')
+
         bdump.close()
 
+        # TRANSACTIONS
         # dump the tape (transactions only -- not dumping cancellations)
         file_out_name = sess_id+'_transactions'
         exchange.tape_dump('transactions_csv/'+file_out_name+'.csv', 'w', 'keep')
-        # transactions plot
-        save_transactions_plot('transactions_csv/'+file_out_name+'.csv', "t_plots/"+file_out_name)
 
-        # record the blotter for each trader
+        # save_transactions_plot('transactions_csv/'+file_out_name+'.csv', "t_plots/"+file_out_name)
+
+        # BLOTTERS FOR EACH TRADER
         bdump = open('blotters_csv/'+sess_id+'_blotters.csv', 'w')
         for t in traders:
             bdump.write('%s, %d\n'% (traders[t].tid, len(traders[t].blotter)))
@@ -1208,70 +1219,14 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
                 bdump.write('%s, Blotteritem, %s\n' % (traders[t].tid, b))
         bdump.close()
 
-
     # write trade_stats for this session (NB end-of-session summary only)
     trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
-#############################
+#######################################################################################
 
-# Reading & Plotting Functions
 
-#############################
 
-# converts file -> (x_coord, y_coord) :: ([float], [float])
-def read_transactions(file_name):
-    with open(file_name, 'r') as f:
-        data = csv.reader(f)
-        l = np.array([ x for x in data ])
-        f = np.vectorize(np.float)
-
-        x = f(l[:,1])
-        y = f(l[:,2])
-        return x, y
-
-def read_networths(file_name):
-    with open(file_name, 'r') as f:
-        data = csv.reader(f)
-        l = np.array([ x for x in data ])
-        f = np.vectorize(np.float)
-
-        x = f(l[:,1])
-        y = f(l[:,2])
-        return x, y
-
-def line_plot(x, y):
-    _, ax = plt.subplots()
-    ax.plot(x, y)
-    ax.set_ylim(ymin=0)
-    return ax
-
-def plot_networth(times, networth, title=None):
-    ax = line_plot(times, networth)
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Networth (£)')
-    if title != None:
-        ax.set_title(title)
-    return ax
-
-def plot_transactions(times, prices, title=None):
-    ax = line_plot(times, prices)
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Price (£)')
-    if title != None:
-        ax.set_title(title)
-    return ax
-
-def save_transactions_plot(file_name, save_to):
-    times, prices = read_transactions(file_name)
-    plot_transactions(times, prices, title=file_name)
-    plt.savefig(save_to)
-
-def save_networth_plot(file_name, save_to):
-    times, networth = read_networths(file_name)
-    plot_transactions(times, networth, title=file_name)
-    plt.savefig(save_to)
-
-#############################
+#######################################################################################
 
 # # Below here is where we set up and run a series of experiments
 

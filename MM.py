@@ -141,6 +141,10 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         if (trade != None):
             self.update_eq(trade["price"]) # update EMA
             self.ltt.append_data(time, trade["price"])# update LTT
+            
+            # save networth for logging
+            self.times.append(time)
+            self.networth.append(self.calculate_networth())
  
         # if no orders, generate one
         if len(self.orders) < 1:
@@ -159,10 +163,6 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         # ZIP black box.
         if (self.price != None):
             super().respond(time, lob, trade, verbose)
-
-        # save networth for logging
-        self.times.append(time)
-        self.networth.append(self.calculate_networth())
 
     # called by the market session
     def bookkeep(self, trade, order, verbose, time):

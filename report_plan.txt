@@ -64,12 +64,6 @@ Improvements:
 
 ---------------------------------------------------------------------
 
-TODO:
-
-1. rewrite Adam's plotting functions
-
----------------------------------------------------------------------
-
 Introduction:
 
 1. thinking behind the algorithm
@@ -91,3 +85,4 @@ Improvements:
                 /
 
 2. account for outliers in regression
+3. Dual Linear Regression - factor in distance from LTT when deciding to buy/sell
