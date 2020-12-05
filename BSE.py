@@ -1179,12 +1179,11 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
     # session has ended
 
-
     # logging
     if dump_all:
 
         # plot networth - needs refactoring
-        bdump = open(sess_id+'_networth.csv', 'w')
+        bdump = open('networths_csv/'+sess_id+'_networth.csv', 'w')
         for t in traders:
             if traders[t].ttype == 'ZIPMM':
                 for i in range(len(traders[t].times)):
@@ -1197,12 +1196,12 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
         # dump the tape (transactions only -- not dumping cancellations)
         file_out_name = sess_id+'_transactions'
-        exchange.tape_dump(file_out_name+'.csv', 'w', 'keep')
+        exchange.tape_dump('transactions_csv/'+file_out_name+'.csv', 'w', 'keep')
         # transactions plot
         save_transactions_plot(file_out_name+'.csv', "t_plots/"+file_out_name)
 
         # record the blotter for each trader
-        bdump = open(sess_id+'_blotters.csv', 'w')
+        bdump = open('blotters_csv/'+sess_id+'_blotters.csv', 'w')
         for t in traders:
             bdump.write('%s, %d\n'% (traders[t].tid, len(traders[t].blotter)))
             for b in traders[t].blotter:
@@ -1276,7 +1275,6 @@ def save_networth_plot(file_name, save_to):
 
 # # Below here is where we set up and run a series of experiments
 
-
 if __name__ == "__main__":
 
     # set up common parameters for all market sessions
@@ -1308,7 +1306,6 @@ if __name__ == "__main__":
     #                     {'from':duration/3, 'to':2*duration/3, 'ranges':[range2], 'stepmode':'fixed'},
     #                     {'from':2*duration/3, 'to':end_time, 'ranges':[range1], 'stepmode':'fixed'}
     #                   ]
-
 
     # The code below sets up symmetric supply and demand curves at prices from 50 to 150, P0=100
 
