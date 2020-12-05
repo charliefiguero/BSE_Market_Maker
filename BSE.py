@@ -54,6 +54,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import MM
+import csv_write
 
 bse_sys_minprice = 1  # minimum price in the system, in cents/pennies
 bse_sys_maxprice = 1000  # maximum price in the system, in cents/pennies
@@ -1187,37 +1188,31 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
     if dump_all:
 
-        # NETWORTH
-        bdump = open('networths_csv/'+sess_id+'_networth.csv', 'w')
-
-        for t in traders:
-            if traders[t].ttype == 'ZIPMM':
-                # write header file
-                bdump.write('%s, %s, %s\n' % ('TID', 'Time', 'Networth'))
-
-                for i in range(len(traders[t].times)):
-                    bdump.write('%s, %f, %f\n' % 
-                        (traders[t].tid, traders[t].times[i], traders[t].networth[i]))
-
-                # save_networth_plot('networths_csv/'+sess_id+'_networth.csv',
-                #                    'n_plots/'+sess_id+'_networth')
-
-        bdump.close()
 
         # TRANSACTIONS
         # dump the tape (transactions only -- not dumping cancellations)
         file_out_name = sess_id+'_transactions'
-        exchange.tape_dump('transactions_csv/'+file_out_name+'.csv', 'w', 'keep')
+        exchange.tape_dump('transactions/'+file_out_name+'.csv', 'w', 'keep')
 
         # save_transactions_plot('transactions_csv/'+file_out_name+'.csv', "t_plots/"+file_out_name)
 
-        # BLOTTERS FOR EACH TRADER
-        bdump = open('blotters_csv/'+sess_id+'_blotters.csv', 'w')
+
+        # BLOTTERS FOR EVERY TRADER
+        bdump = open('blotters/'+sess_id+'_blotters.csv', 'w')
         for t in traders:
             bdump.write('%s, %d\n'% (traders[t].tid, len(traders[t].blotter)))
             for b in traders[t].blotter:
                 bdump.write('%s, Blotteritem, %s\n' % (traders[t].tid, b))
         bdump.close()
+
+        # ZIP csv writing
+        csv_write.zip_transactions(sess_id, traders)
+        csv_write.zip_networth(sess_id, traders)
+        csv_write.zip_ema(sess_id, traders)
+        csv_write.zip_job(sess_id, traders)
+        csv_write.zip_inventory(sess_id, traders)
+        csv_write.zip_ltt(sess_id, traders)
+
 
     # write trade_stats for this session (NB end-of-session summary only)
     trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))

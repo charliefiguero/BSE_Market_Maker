@@ -42,6 +42,11 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         # logging data
         self.times = []
         self.networth = []
+        self.transactions = [] # [[bid/ask, time, price]]
+        self.ema_history = [] # [(time, price)]
+        self.job_history = [(0, self.job)] # [(time, job)]
+        self.inventory_history = [(0, self.inventory)] # [(time, inventory)]
+        self.ltt_history = []
     
     def get_quoteprice(self, time, otype): # none
         if self.ltt.history_length < self.nLastTrades or self.eqlbm == None: # check if ema has built up enough history
@@ -101,8 +106,11 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
     def decide_by_ltt(self, time, market_price_equilibrium):
         # decide by LTT
         self.ltt.fit_regression()
+        predicted_price = self.ltt.predict_price(time) 
+        self.ltt_history.append((time, predicted_price)) # record ltt prediction
+
         if (self.ltt.r_fitted == False or
-                market_price_equilibrium < self.ltt.predict_price(time)): return "Bid"
+                market_price_equilibrium < predicted_price): return "Bid"
         else: return "Ask"
 
     # can only be called in bookkeep
@@ -140,11 +148,11 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         
         if (trade != None):
             self.update_eq(trade["price"]) # update EMA
+            self.ema_history.append((time, self.eqlbm)) # record new EMA
             self.ltt.append_data(time, trade["price"])# update LTT
-            
+
             # save networth for logging
-            self.times.append(time)
-            self.networth.append(self.calculate_networth())
+            self.networth.append((time, self.calculate_networth()))
  
         # if no orders, generate one
         if len(self.orders) < 1:
@@ -164,15 +172,25 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         if (self.price != None):
             super().respond(time, lob, trade, verbose)
 
-    # called by the market session
+    # called by the market session when trade has been fulfilled
     def bookkeep(self, trade, order, verbose, time):
         outstr = ""
         for order in self.orders:
             outstr = outstr + str(order)
             
         self.blotter.append(trade) # add trade record to trader's blotter
+
         # NB What follows is **LAZY** -- it assumes all orders are quantity=1
         transactionprice = trade['price']
+
+        # easier transaction tracking
+        if self.job == 'Bid': transaction_type = 'Bought'
+        elif self.job == 'Ask': transaction_type = 'Sold'
+        else:
+            print("Error: didnt have a job")
+            transaction_type = "Error"
+            exit(1)
+        self.transactions.append([transaction_type, time, trade["price"]])
         
         bidTrans = True #did I buy? (for output logging only)
         self.active = False # no current orders on the exchange
@@ -191,6 +209,9 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
             sys.exit('FATAL: ZIPMM doesn\'t know .otype %s\n' %
                     self.orders[0].otype)
 
+        # append to inventory history
+        self.inventory_history.append((time, self.inventory))
+
         self.n_trades += 1
 
         verbose = True
@@ -207,6 +228,7 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
 
         # Decides job of next order. Must be done here because of structure of BSE
         self.job = self.decide_job(time, self.eqlbm)
+        self.job_history.append((time, self.job))
 
 class Trader_DIMM01(BSE.Trader):
 

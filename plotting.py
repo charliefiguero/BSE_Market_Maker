@@ -67,9 +67,39 @@ def save_networth_plot(file_name, save_to):
     plot_transactions(times, networth, title=file_name)
     plt.savefig(save_to)
 
-data = pd.read_csv('networths_csv/sess0001_networth.csv')
-print(type(data))
-print(data)
-# sns.set_theme()
-# sns.relplot(data=data, x="Time", y="Networth")
-# plt.show()
+def plot_transactions_with_ZIPMM():
+    fig, ax = plt.subplots()
+    all_transactions = pd.read_csv('transactions/sess0001_transactions.csv', names=['type', 'time', 'price'])
+    MM_transactions = pd.read_csv('transactions/sess0001_ZIPMM_transactions.csv')
+    sns.set_theme()
+    sns.lineplot(data=all_transactions, x="time", y="price", ax=ax)
+    sns.scatterplot(data=MM_transactions, x="time", y=[60] * len(MM_transactions), hue='transaction_type', ax=ax)
+    plt.show()
+
+# plot_transactions_with_ZIPMM()
+
+if __name__ == "__main__":
+
+    # set up plot
+    fig, ax = plt.subplots()
+    sns.set_theme()
+
+    # get data
+    all_transactions = pd.read_csv('transactions/sess0001_transactions.csv', names=['type', 'time', 'price'])
+    MM_transactions = pd.read_csv('transactions/sess0001_ZIPMM_transactions.csv')
+    MM_ema = pd.read_csv('ema/sess0001_ZIPMM_ema.csv')
+    MM_jobs = pd.read_csv('job_history/sess0001_ZIPMM_job_history.csv')
+
+    # combine data
+    concatenated = pd.concat([all_transactions.assign(dataset='all_transactions'),
+                            MM_ema.assign(dataset='MM_ema')])
+    print(concatenated)
+
+    # plotting
+    # sns.lineplot(data=concatenated, x="time", y="price", hue="dataset")
+    sns.lineplot(data=all_transactions, x="time", y="price", ax=ax)
+    # sns.lineplot(data=MM_ema, x="time", y="price", ax=ax)
+    # sns.scatterplot(data=MM_transactions, x="time", y=[60] * len(MM_transactions), hue='transaction_type', ax=ax)
+    sns.scatterplot(data=MM_jobs, x="time", y=[60]*len(MM_jobs), hue='new_job', ax=ax)
+
+    plt.show()
