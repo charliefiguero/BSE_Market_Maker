@@ -1213,7 +1213,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
         csv_write.zip_inventory(sess_id, traders)
         csv_write.zip_ltt(sess_id, traders)
 
-
     # write trade_stats for this session (NB end-of-session summary only)
     trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
