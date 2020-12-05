@@ -1190,7 +1190,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
                     bdump.write('%s, %f, %f\n' % 
                         (traders[t].tid, traders[t].times[i], traders[t].networth[i]))
                 # plot networth
-                save_networth_plot(sess_id+'_networth.csv',
+                save_networth_plot('networths_csv/'+sess_id+'_networth.csv',
                                    'n_plots/'+sess_id+'_networth')
         bdump.close()
 
@@ -1198,7 +1198,7 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
         file_out_name = sess_id+'_transactions'
         exchange.tape_dump('transactions_csv/'+file_out_name+'.csv', 'w', 'keep')
         # transactions plot
-        save_transactions_plot(file_out_name+'.csv', "t_plots/"+file_out_name)
+        save_transactions_plot('transactions_csv/'+file_out_name+'.csv', "t_plots/"+file_out_name)
 
         # record the blotter for each trader
         bdump = open('blotters_csv/'+sess_id+'_blotters.csv', 'w')
