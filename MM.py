@@ -39,51 +39,46 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
 
         self.job = 'Bid'
 
-        # logging info
+        # logging data
         self.times = []
         self.networth = []
     
     def get_quoteprice(self, time, otype): # none
-        if (self.ltt.history_length < self.nLastTrades): # check if ema has built up enough history
-            return None
+        if self.ltt.history_length < self.nLastTrades or self.eqlbm == None: # check if ema has built up enough history
+            return self.get_stub_price(otype)
         else:
-            return float(self.eqlbm)
+            if self.eqlbm == None:
+                print("Error: quoteprice == None")
+                exit(1)
+            return float(self.eqlbm) # returns current market average - to be improved by ZIP
 
-    def generate_order(self, time, lob):
-        # check there is sufficient inventory
-        if (self.job == 'Ask'):
-            if (self.inventory <= self.MIN_INVENTORY):
-                print("insufficent inventory")
-                self.orders = []
-                return 
-        elif (self.job == 'Bid'):
-            if (self.inventory > self.MAX_INVENTORY):
-                print("inventory capped")
-                self.orders = []
-                return 
-        else:
-            print("debug: no job")
+    def get_stub_price(self, otype): 
+        """ Used to set price that will never be fulfilled. """
+        if otype == 'Bid': return BSE.bse_sys_minprice
+        elif otype == 'Ask': return BSE.bse_sys_maxprice
+        else: 
+            print('Error in order type')
             exit(1)
-            self.orders = []
-            return
+
+    def generate_order(self, time, lob, otype):
+        """ Only called after a respond call. This is important as 
+            self.eqlbm must != None """
 
         # find a baseline quoteprice - currently based on ema
         quoteprice = self.get_quoteprice(time, self.job)
-        if (quoteprice == None): 
-            self.orders = []
-            return
 
         # balance check - can get stuck trying to buy with no money due to job set in bookkeep
         if self.job == 'Bid':
             if self.balance < quoteprice:
                 quoteprice = self.balance
 
-        quoteprice = int(round(quoteprice))
+        # create new order
+        quoteprice = int(round(quoteprice)) # trader.orders[0] must be better price than market sessions getorder result
         quantity = 1 # hard coded as this version of BSE does not support order quantites
         new_order = BSE.Order(self.tid, self.job, quoteprice, quantity, time, lob['QID'])
         
-        self.orders = [new_order]
-        print("generated new order")
+        # add order to orders
+        self.add_order(new_order, verbose=False)
 
     def update_eq(self, price):
         # Updates the equilibrium price estimate using EMA
@@ -91,50 +86,85 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
         else: self.eqlbm = self.ema_param * price + (1 - self.ema_param) * self.eqlbm
 
     def calculate_networth(self):
-        if (self.inventory <= 1):
-            return self.balance
+        if (self.inventory <= 0): return self.balance
         return self.balance + (self.inventory * self.eqlbm)
+
+    def decide_by_inventory(self):
+        # decide job by inventory constraints
+        if self.inventory == self.MAX_INVENTORY:
+            return 'Ask'
+        elif self.inventory == self.MIN_INVENTORY:
+            return 'Bid'
+        else:
+            return 'None'
+
+    def decide_by_ltt(self, time, market_price_equilibrium):
+        # decide by LTT
+        self.ltt.fit_regression()
+        if (self.ltt.r_fitted == False or
+                market_price_equilibrium < self.ltt.predict_price(time)): return "Bid"
+        else: return "Ask"
+
+    # can only be called in bookkeep
+    def decide_job(self, time, market_price_equilibrium):
+        """ Changes the order type of the MM trader. """
+
+        # force job if constrained by inventory
+        inventory_choice = self.decide_by_inventory()
+        if inventory_choice != 'None': return inventory_choice
+
+        # decide by LTT
+        return self.decide_by_ltt(time, market_price_equilibrium)
 
     # called by the market session
     def getorder(self, time, countdown, lob):
-        # refine order with zip
-        lob_order = super().getorder(time, countdown, lob)
-        if (len(self.orders) == 1): 
-            print()
-            print("equilibrium:", self.eqlbm)
-            print("order:", self.orders[0])
-            print("lob order:", lob_order)
-        return lob_order
+        
+        # check that the market conditions still match job.
+        # if job was force set by inventory, this will stop unfavourable trades going through
+        if self.decide_by_ltt(time, self.eqlbm) != self.job:
+            # send stub order if you don't want to trade
+            quantity = 1
+            return BSE.Order(self.tid, self.job, self.get_stub_price(self.job), 
+                                quantity, time, lob['QID'])
 
+        # refine order with ZIP
+        lob_order = super().getorder(time, countdown, lob)
+
+        # if (len(self.orders) == 1): 
+        #     print("equilibrium:",self.eqlbm,"; order:",self.orders[0],"; lob order:", lob_order)
+        return lob_order # can change price on BSE but not otype
+
+    # called by the market session
     def respond(self, time, lob, trade, verbose):
         self.order_age += 1
+        
+        if (trade != None):
+            self.update_eq(trade["price"]) # update EMA
+            self.ltt.append_data(time, trade["price"])# update LTT
  
         # if no orders, generate one
         if len(self.orders) < 1:
-            self.generate_order(time, lob)
-            if len(self.orders) == 1:
-                print("generated new order (previously empty):", self.orders[0])
+            self.generate_order(time, lob, self.job)
+            # if len(self.orders) == 1:
+            #     print("generated new order (previously empty):", self.orders[0])
             self.order_age = 0
 
         # order staleness check
         if (self.order_age > self.MAX_ORDER_AGE):
-            self.generate_order(time, lob)
-            if len(self.orders) == 1:
-                print("generated new order (stale):", self.orders[0])
+            self.generate_order(time, lob, self.job)
+            # if len(self.orders) == 1:
+            #     print("generated new order (stale):", self.orders[0])
             self.order_age = 0
-
-        if (trade != None):
-            self.update_eq(trade["price"]) # update EMA
-            self.ltt.append_data(time, trade["price"])# update LTT
 
         # ZIP black box.
         if (self.price != None):
             super().respond(time, lob, trade, verbose)
 
-        # log networth
+        # save networth for logging
         self.times.append(time)
         self.networth.append(self.calculate_networth())
 
+    # called by the market session
     def bookkeep(self, trade, order, verbose, time):
         outstr = ""
         for order in self.orders:
@@ -163,22 +193,20 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
 
         self.n_trades += 1
 
-        verbose = True # We will log to output
-
+        verbose = True
         if verbose: # The following is for logging output to terminal 
-            if bidTrans: # We bought some shares
-                outcome = "Bght"
-            else:        # We sold some shares
-                outcome = "Sold"
+            if bidTrans: outcome = "Bght"    # we bought some shares
+            else:        outcome = "Sold"    # We sold some shares
                 
             net_worth = self.balance + self.last_purchase_price 
             print('Type=%s; Order=%s; %s=%d; Inventory=%d; Balance=%d, NetWorth=%d' %
                 (self.ttype, outstr, outcome, transactionprice, self.inventory, self.balance, self.calculate_networth())) 
         
-        self.del_order(order) # delete the order
+        # delete the order
+        self.del_order(order) 
 
         # Decides job of next order. Must be done here because of structure of BSE
-        self.job = self.ltt.decide_job(time, self.eqlbm)
+        self.job = self.decide_job(time, self.eqlbm)
 
 class Trader_DIMM01(BSE.Trader):
 
@@ -289,8 +317,8 @@ class LR_LTT(): # Linear Regression - Long Term Trend
         self.transaction_prices = []
         self.history_length = 0
         self.regression = linear_model.LinearRegression()
-        self.r_fitted = False
-        self.needs_update = False
+        self.r_fitted = False # has the model ever been fitted
+        self.needs_update = False # is the model out of date
 
     def fit_regression(self):
         # if there is insufficient data to regress => self.r_fitted = False
@@ -312,9 +340,4 @@ class LR_LTT(): # Linear Regression - Long Term Trend
         if (self.r_fitted == False): return None
         return self.regression.predict([[time]])
 
-    def decide_job(self, time, market_price_equilibrium):
-        self.fit_regression()
-        if (self.r_fitted == False or
-                market_price_equilibrium > self.regression.predict([[time]])): return "Ask"
-        else: return "Bid"
         

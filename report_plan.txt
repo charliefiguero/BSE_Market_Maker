@@ -89,3 +89,5 @@ Improvements:
                 \
 1. O8=> ~~~  >^-8{(|\) : )\ 
                 /
+
+2. account for outliers in regression

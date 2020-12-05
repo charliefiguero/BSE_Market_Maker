@@ -303,6 +303,7 @@ class Exchange(Orderbook):
                 self.asks.delete_best()
         else:
             # we should never get here
+            print("otype ==", order.otype)
             sys.exit('process_order() given neither Bid nor Ask')
         # NB at this point we have deleted the order from the exchange's records
         # but the two traders concerned still have to be notified
@@ -655,10 +656,6 @@ class Trader_ZIP(Trader):
         if lob_best_bid_p is not None:
             # non-empty bid LOB
             lob_best_bid_q = lob['bids']['lob'][-1][1]
-            print("prev_best_bid_p:", self.prev_best_bid_p)
-            print(lob)
-            print("prev_best_bid_q:", self.prev_best_bid_q)
-            print("lob_best_bid_q:", lob_best_bid_q)
             if (self.prev_best_bid_p is not None) and (self.prev_best_bid_p < lob_best_bid_p):
                 # best bid has improved
                 # NB doesn't check if the improvement was by self
@@ -669,14 +666,11 @@ class Trader_ZIP(Trader):
                 bid_hit = True
         elif self.prev_best_bid_p is not None:
             # the bid LOB has been emptied: was it cancelled or hit?
-            print("hit or canceled")
             last_tape_item = lob['tape'][-1]
             if last_tape_item['type'] == 'Cancel':
                 bid_hit = False
             else:
                 bid_hit = True
-        else:
-            print("debug check")
 
         # what, if anything, has happened on the ask LOB?
         ask_improved = False
@@ -1159,9 +1153,6 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
         if order is not None:
             if order.otype == 'Ask' and order.price < traders[tid].orders[0].price:
-                print("debug")
-                print(order.price)
-                print(traders[tid].orders[0].price)
                 sys.exit('Bad ask')
             if order.otype == 'Bid' and order.price > traders[tid].orders[0].price:
                 sys.exit('Bad bid')
@@ -1188,31 +1179,26 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
     # session has ended
 
-    # plot networth - needs refactoring
 
-    # bdump = open(sess_id+'_networth.csv', 'w')
-    # for t in traders:
-    #     if traders[t].ttype == 'ZIPMM':
-    #         for i in range(len(traders[t].times)):
-    #             bdump.write('%s, %f, %f\n' % 
-    #                 (traders[t].tid, traders[t].times[i], traders[t].networth[i]))
-
-    #         _, ax = plt.subplots()
-    #         ax.plot(traders[t].times, traders[t].networth)
-    #         ax.set_xlabel('Time (s)')
-    #         ax.set_ylabel('Networth (£)')
-    #         ax.set_ylim(ymin=0)
-    #         plt.show()
-
-    # bdump.close()
-
-
+    # logging
     if dump_all:
+
+        # plot networth - needs refactoring
+        bdump = open(sess_id+'_networth.csv', 'w')
+        for t in traders:
+            if traders[t].ttype == 'ZIPMM':
+                for i in range(len(traders[t].times)):
+                    bdump.write('%s, %f, %f\n' % 
+                        (traders[t].tid, traders[t].times[i], traders[t].networth[i]))
+                # plot networth
+                save_networth_plot(sess_id+'_networth.csv',
+                                   'n_plots/'+sess_id+'_networth')
+        bdump.close()
 
         # dump the tape (transactions only -- not dumping cancellations)
         file_out_name = sess_id+'_transactions'
         exchange.tape_dump(file_out_name+'.csv', 'w', 'keep')
-
+        # transactions plot
         save_transactions_plot(file_out_name+'.csv', "t_plots/"+file_out_name)
 
         # record the blotter for each trader
@@ -1229,36 +1215,61 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
 
 #############################
 
-# Plotting Functions
+# Reading & Plotting Functions
 
 #############################
 
-# converts transactions -> (times, prices) :: ([float], [float])
+# converts file -> (x_coord, y_coord) :: ([float], [float])
 def read_transactions(file_name):
     with open(file_name, 'r') as f:
         data = csv.reader(f)
         l = np.array([ x for x in data ])
         f = np.vectorize(np.float)
 
-        times  = f(l[:,1])
-        prices = f(l[:,2])
+        x = f(l[:,1])
+        y = f(l[:,2])
+        return x, y
 
-        return times, prices
+def read_networths(file_name):
+    with open(file_name, 'r') as f:
+        data = csv.reader(f)
+        l = np.array([ x for x in data ])
+        f = np.vectorize(np.float)
 
-# plots price against time
-def plot_transactions(times, prices, title=None):
+        x = f(l[:,1])
+        y = f(l[:,2])
+        return x, y
+
+def line_plot(x, y):
     _, ax = plt.subplots()
-    ax.plot(times, prices)
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Price (£)')
+    ax.plot(x, y)
     ax.set_ylim(ymin=0)
+    return ax
+
+def plot_networth(times, networth, title=None):
+    ax = line_plot(times, networth)
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Networth (£)')
     if title != None:
         ax.set_title(title)
-    # plt.show()
+    return ax
+
+def plot_transactions(times, prices, title=None):
+    ax = line_plot(times, prices)
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Price (£)')
+    if title != None:
+        ax.set_title(title)
+    return ax
 
 def save_transactions_plot(file_name, save_to):
     times, prices = read_transactions(file_name)
     plot_transactions(times, prices, title=file_name)
+    plt.savefig(save_to)
+
+def save_networth_plot(file_name, save_to):
+    times, networth = read_networths(file_name)
+    plot_transactions(times, networth, title=file_name)
     plt.savefig(save_to)
 
 #############################
@@ -1302,14 +1313,19 @@ if __name__ == "__main__":
     # The code below sets up symmetric supply and demand curves at prices from 50 to 150, P0=100
 
     range1 = (50, 150)
-    # range1 = (50, 150, schedule_offsetfn)
-    supply_schedule = [{'from': start_time, 'to': end_time, 'ranges': [range1], 'stepmode': 'fixed'}
-                       ]
+    range1b = (200, 300)
+    range1c = (50, 150, schedule_offsetfn)
+    # supply_schedule = [{'from': start_time, 'to': duration /3, 'ranges': [range1], 'stepmode': 'fixed'},
+    #                    {'from': duration / 3, 'to': duration * 2/3, 'ranges': [range1b], 'stepmode': 'fixed'},
+    #                    {'from': duration * 2/3, 'to': end_time, 'ranges': [range1], 'stepmode': 'fixed'}
+    #                   ]
+    supply_schedule = [{'from': start_time, 'to': duration, 'ranges': [range1], 'stepmode': 'fixed'}]
+    # demand_schedule = supply_schedule
 
     range2 = (50, 150)
-    # range2 = (50, 150, schedule_offsetfn)
-    demand_schedule = [{'from': start_time, 'to': end_time, 'ranges': [range2], 'stepmode': 'fixed'}
-                       ]
+    range2b = (200, 300)
+    range2c = (50, 150, schedule_offsetfn)
+    demand_schedule = [{'from': start_time, 'to': end_time, 'ranges': [range2], 'stepmode': 'fixed'}]
 
     order_sched = {'sup': supply_schedule, 'dem': demand_schedule,
                    'interval': 30, 'timemode': 'drip-poisson'}
@@ -1326,10 +1342,10 @@ if __name__ == "__main__":
     verbose = True
 
     # n_trials is how many trials (i.e. market sessions) to run in total
-    n_trials = 6
+    n_trials = 1
 
     # n_recorded is how many trials (i.e. market sessions) to write full data-files for
-    n_trials_recorded = 0
+    n_trials_recorded = 1
 
     tdump=open('avg_balance.csv','w')
 
