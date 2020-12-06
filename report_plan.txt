@@ -6,7 +6,7 @@ Methods
     Describe the context and setting of the study 
     Specify the study design 
     Describe the ‘population’ (patients, doctors, hospitals, etc.) 
-    Describe the sampling strategy 
+    Describe the sampling strategy
     Describe the intervention (if applicable) 
     Identify the main study variables 
     Describe data collection instruments and procedures 
@@ -86,3 +86,66 @@ Improvements:
 
 2. account for outliers in regression
 3. Dual Linear Regression - factor in distance from LTT when deciding to buy/sell
+
+FIND 1 NOVEL EVALUATION TECHNIQUE
+
+PLOT DIMM
+
+statistically significant - repeat experiments
+
+repetition is important due to the stocastic nature of the market
+
+---------------------------------------------------------------------
+
+REPORT PLAN:
+
+Introduction
+- What is a Market Maker
+- What are its goals
+
+BSE
+- Assumptions it makes
+- Limitations (only change buy sell in bookkeep)
+- Capabilites
+
+Design of My MM
+- Linear Regression
+- EMA
+- ZIP to refine buy/sell orders
+- No trades before sufficient inventory
+
+Experiment Goals
+- BSE is stocastic so want to take multiple runs
+- Explore how the algorithm holds up in different market situations
+- Comparison against DIMM as a baseline
+
+How do the differnt parts of the algorithm work together
+- ZIP on its own
+- EMA on its own
+- Linear Regression on its own
+- What happens when trades happen at the start
+- Inventory represents exposure to the market 
+- effects of history on linear regression
+
+How does it handle different market situations
+- static
+- oscillating
+- bear/bull
+- wider/narrower range
+
+How does it handle different market populations
+- No GVWY
+- Competetive markets
+- Shavers
+- exhaustive trials?
+
+Improvements
+- change exposure depending of volatility of markets
+- shorter history
+- ignore outliers
+
+---------------------------------------------------------------------
+
+Statistical Analysis
+mean and variation for end trader results
+percentage improvements on DIMM
