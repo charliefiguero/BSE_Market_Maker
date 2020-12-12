@@ -106,8 +106,9 @@ class Trader_ZIPMM(BSE.Trader_ZIP):
     def decide_by_ltt(self, time, market_price_equilibrium):
         # decide by LTT
         self.ltt.fit_regression()
-        predicted_price = self.ltt.predict_price(time) 
-        self.ltt_history.append((time, predicted_price)) # record ltt prediction
+        predicted_price = self.ltt.predict_price(time)
+        if predicted_price != None:
+            self.ltt_history.append((time, predicted_price)) # record ltt prediction
 
         if (self.ltt.r_fitted == False or
                 market_price_equilibrium < predicted_price): return "Bid"
@@ -242,6 +243,31 @@ class Trader_DIMM01(BSE.Trader):
         self.bid_delta = 1 # how much (absolute value) to improve on best ask when buying 
         self.ask_delta = 5 # how much (absolute value) to improve on purchase price
 
+        # loggging data 
+        # self.times = []
+        self.networth = []
+        self.transactions = [] # [[bid/ask, time, price]]
+
+        # trader inventory
+        self.inventory = 0
+
+        # Exponential Moving Average
+        self.eqlbm = None
+        self.nLastTrades = 5
+        self.ema_param = 2 / float(self.nLastTrades + 1)
+
+
+    # included for plotting 
+    def update_eq(self, price):
+        # Updates the equilibrium price estimate using EMA
+        if self.eqlbm == None: self.eqlbm = price
+        else: self.eqlbm = self.ema_param * price + (1 - self.ema_param) * self.eqlbm
+
+    # included for plotting 
+    def calculate_networth(self):
+        if (self.inventory <= 0): return self.balance
+        return self.balance + (self.inventory * self.eqlbm)
+
     # the following is just a copy of GVWY's getorder method
     def getorder(self, time, countdown, lob):
         if len(self.orders) < 1:
@@ -257,6 +283,12 @@ class Trader_DIMM01(BSE.Trader):
         return order
 
     def respond(self, time, lob, trade, verbose):
+
+        # for plotting purposes
+        if trade != None:
+            self.update_eq(trade["price"]) # update EMA
+            self.networth.append((time,self.calculate_networth()))
+
         # DIMM buys and holds, sells as soon as it can make a "decent" profit 
         if self.job == 'Buy':
             # see what's on the LOB
@@ -285,6 +317,7 @@ class Trader_DIMM01(BSE.Trader):
                     order=BSE.Order(self.tid, 'Ask', askprice, 1, time, lob['QID']) 
                     self.orders=[order]
                     if verbose : print('DIMM01 Sell order=%s ' % ( order))
+
         else :
             sys.exit('FATAL: DIMM01 doesn\'t know self.job type %s\n' % self.job)
 
@@ -304,14 +337,23 @@ class Trader_DIMM01(BSE.Trader):
             self.balance -= transactionprice
             self.last_purchase_price = transactionprice
             self.job = 'Sell' # now try to sell it for a profit
+            self.inventory += 1
         elif self.orders[0].otype == 'Ask':
             bidTrans = False # we made a sale (for output logging only) # Sold! put the money in the bank
             self.balance += transactionprice
             self.last_purchase_price = 0
             self.job = 'Buy' # now go back and buy another one
+            self.inventory -= 1
         else:
             sys.exit('FATAL: DIMM01 doesn\'t know .otype %s\n' %
                     self.orders[0].otype)
+
+        if self.orders[0].otype == 'Bid': transaction_type = 'Bought'
+        elif self.orders[0].otype == 'Ask': transaction_type = 'Sold'
+        else:
+            print("Error: didnt have an otype")
+            exit(1)
+        self.transactions.append([transaction_type, time, trade["price"]])
 
         self.n_trades += 1
 
@@ -360,6 +402,6 @@ class LR_LTT(): # Linear Regression - Long Term Trend
     def predict_price(self, time):
         self.fit_regression()
         if (self.r_fitted == False): return None
-        return self.regression.predict([[time]])
+        return self.regression.predict([[time]])[0]
 
         

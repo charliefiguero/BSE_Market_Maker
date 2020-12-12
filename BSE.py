@@ -1213,6 +1213,10 @@ def market_session(sess_id, starttime, endtime, trader_spec, order_schedule, tdu
         csv_write.zip_inventory(sess_id, traders)
         csv_write.zip_ltt(sess_id, traders)
 
+        # DIMM01 csv writing
+        csv_write.DIMM_transactions(sess_id, traders)
+        csv_write.DIMM_networth(sess_id, traders)
+
     # write trade_stats for this session (NB end-of-session summary only)
     trade_stats(sess_id, traders, tdump, time, exchange.publish_lob(time, lob_verbose))
 
@@ -1228,7 +1232,8 @@ if __name__ == "__main__":
 
     # set up common parameters for all market sessions
     start_time = 0.0
-    end_time = 600.0
+    end_time = 1200.0
+    # end_time = 600.0
     duration = end_time - start_time
 
     # schedule_offsetfn returns time-dependent offset, to be added to schedule prices
@@ -1288,10 +1293,10 @@ if __name__ == "__main__":
     verbose = True
 
     # n_trials is how many trials (i.e. market sessions) to run in total
-    n_trials = 1
+    n_trials = 10
 
     # n_recorded is how many trials (i.e. market sessions) to write full data-files for
-    n_trials_recorded = 1
+    n_trials_recorded = 10
 
     tdump=open('avg_balance.csv','w')
 
